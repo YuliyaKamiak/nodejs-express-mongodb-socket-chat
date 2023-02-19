@@ -24,21 +24,35 @@ module.exports.serializeListUsers = (listUsers) => {
   return listUsersArray
 }
 
-module.exports.serializeNews = (news) => {
+module.exports.serializeNews = (news, user) => {
   return {
     id: news._id,
     title: news.title,
     text: news.text,
     created_at: news.created_at,
-    user: news.user,
+    user: user,
   }
 }
 
-module.exports.serializeListNews = (listNews) => {
+module.exports.serializeListNews = (listNews, listUsers) => {
   let listNewsArray = []
   for (let i=0; i<listNews.length; i++) {
-    listNewsArray.push(this.serializeNews(listNews[i])    )
+    let newsAuthor = listUsers.find(user => {
+      return user._id.equals(listNews[i].userId)}
+    )
+    let serializeUser = this.serializeUser(newsAuthor)
+    listNewsArray.push(this.serializeNews(listNews[i], serializeUser))
   }
   return listNewsArray
+}
+
+module.exports.serializeHistoryChat = (currentChat, user) => {
+  return {
+    id: news._id,
+    title: news.title,
+    text: news.text,
+    created_at: news.created_at,
+    user: user,
+  }
 }
 

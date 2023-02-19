@@ -4,6 +4,7 @@ const app = express()
 const http = require('http')
 const server = http.createServer(app)
 const wss = require('socket.io').listen(server)
+const db = require('./models')
 
 require('./models/connection')
 
@@ -50,35 +51,35 @@ server.listen(PORT, function () {
 //wss code ------------------------
 
 const connectUsers = {} //online users
-const historyMessage = {} //todo in bd {userId, recipientId, message}
 
 wss.on('connection', (socket) => {
   const socketId = socket.id
 
-  socket.on('users:connect', (data) => {
+  socket.on('users:connect', async (data) => {
     const user = { ...data, socketId, activeRoom: null }
 
     connectUsers[socketId] = user
-
-    //console.log(Object.values(connectUsers))
 
     //trigger 'users:list' event on the client
     socket.emit('users:list', Object.values(connectUsers)) //Sending yourself all users who are online
     socket.broadcast.emit('users:add', user) // Send yourself (current connection) to other users
   })
-  socket.on('message:add', (data) => {
+  socket.on('message:add', async (data) => {
     const { senderId, recipientId } = data
 
     socket.emit('message:add', data) //send data to yourself client
 
     socket.broadcast.to(data.roomId).emit('message:add', data)
-    addHistory(senderId, recipientId, data)
-    addHistory(recipientId, senderId, data)
+    await addHistory(senderId, recipientId, data.text)
   })
-  socket.on('message:history', (data) => {
-    if (historyMessage[data.userId] && historyMessage[data.userId][data.recipientId]) {
+  socket.on('message:history', async (data) => {
+    let currentChat = await db.getChatRoomByUsersId(data.userId, data.recipientId)
+    if (currentChat) {
+      socket.emit('message:history', currentChat.chatObjects)
+    } else {
       socket.emit('message:history', [])
     }
+
   })
   socket.on('disconnect', (data) => {
     delete connectUsers[socketId]
@@ -86,18 +87,17 @@ wss.on('connection', (socket) => {
   })
 })
 
-function addHistory(senderId, recipientId, data) {
-  if (historyMessage[senderId]) {
-    if (historyMessage[senderId][recipientId]) {
-      historyMessage[senderId][recipientId].push(data)
-    } else {
-      historyMessage[senderId][recipientId] = []
-      historyMessage[senderId][recipientId].push(data)
-    }
+async function addHistory(senderId, recipientId, message) {
+  const data = {
+    senderId,
+    recipientId,
+    message
+  }
+  let currentChat = await db.getChatRoomByUsersId(senderId, recipientId)
+  if (currentChat) {
+    await db.addChatObjectByChatRoom(data)
   } else {
-    historyMessage[senderId] = {}
-    historyMessage[senderId][recipientId] = []
-    historyMessage[senderId][recipientId].push(data)
+    await db.createChatRoom(data)
   }
 }
 
