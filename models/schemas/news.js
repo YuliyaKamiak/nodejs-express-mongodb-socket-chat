@@ -12,8 +12,8 @@ const newsSchema = new Schema(
     title: {
       type: String,
     },
-    user: {
-      type: Object,
+    userId: {
+      type: Schema.ObjectId,
     },
     permission: {
       chat: { C: Boolean, R: Boolean, U: Boolean, D: Boolean },

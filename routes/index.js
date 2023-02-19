@@ -191,11 +191,11 @@ router
 
 router.get('/news', auth, async (req, res, next) => {
   const refreshToken = req.headers['authorization']
-  const user = await tokens.getUserByToken(refreshToken)
-  const allNews = await db.getAllNews(user.userName)
+  const allNews = await db.getAllNews()
+  const allUsers = await db.getUsers()
 
   res.json(allNews ? [
-    ...helper.serializeListNews(allNews),
+    ...helper.serializeListNews(allNews, allUsers),
   ] : {})
 })
 
@@ -206,12 +206,14 @@ router.post('/news', auth, async (req, res, next) => {
   try {
     const data = {
       ...req.body,
-      user: helper.serializeUser(user)
+      userId: user._id
     }
     const newNews = await db.createNews(data)
-    const allNews = await db.getAllNews(user.userName)
+    const allNews = await db.getAllNews()
+    const allUsers = await db.getUsers()
+
     res.json(allNews ? [
-      ...helper.serializeListNews(allNews),
+      ...helper.serializeListNews(allNews, allUsers),
     ] : {})
   } catch (e) {
     console.log(e)
@@ -225,9 +227,11 @@ router.delete('/news/:id', auth, async (req, res, next) => {
 
   try {
     const deletedNews = await db.deleteNewsById(req.params.id)
-    const allNews = await db.getAllNews(user.userName)
+    const allNews = await db.getAllNews()
+    const allUsers = await db.getUsers()
+
     res.json(allNews ? [
-      ...helper.serializeListNews(allNews),
+      ...helper.serializeListNews(allNews, allUsers),
     ] : {})
   } catch (e) {
     console.log(e)
@@ -245,9 +249,11 @@ router.patch('/news/:id', auth, async (req, res, next) => {
       ...req.body
     }
     const updatedNews = await db.updateNewsById(data)
-    const allNews = await db.getAllNews(user.userName)
+    const allNews = await db.getAllNews()
+    const allUsers = await db.getUsers()
+
     res.json(allNews ? [
-      ...helper.serializeListNews(allNews),
+      ...helper.serializeListNews(allNews, allUsers),
     ] : {})
   } catch (e) {
     console.log(e)
@@ -273,10 +279,10 @@ router.patch('/users/:id/permission', auth, async (req, res, next) => {
     }
 
     db.updateUserPermission(updatedData).then(async () => {
-      const allUsers = await db.getUsers()
+      const updatedUser = await db.getUserByName(user.userName)
 
-      res.json(allUsers ? [
-        ...helper.serializeListUsers(allUsers),
+      res.json(updatedUser ? [
+        updatedUser.permission,
       ] : {})
     })
   } catch (e) {
